@@ -10,42 +10,35 @@ import uuid
 from pathlib import Path
 
 from backend.config.settings import GEMINI_API_KEY, GEMINI_MODEL, RESULT_DIR
+from backend.services.base_service import BaseImageGenerationService
 
-class GeminiService:
-    """Service for generating images using Google's Gemini API."""
-    
+class GeminiService(BaseImageGenerationService):    
     def __init__(self):
-        """Initialize the Gemini client."""
+        print(f"[INFO]---INITIALIZING GEMINI SERVICE---")
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         self.model = GEMINI_MODEL
     
     def generate_image(self, prompt, image_path=None):
-        """
-        Generate an image based on the prompt and optionally an input image.
-        
-        Args:
-            prompt (str): The text prompt for image generation
-            image_path (str, optional): Path to an input image
-            
-        Returns:
-            str: Path to the generated image
-        """
+
         try:
             contents = [prompt]
-            
-            # Add image to contents if provided
             if image_path and os.path.exists(image_path):
+                print(f"[INFO]---RECIEVED IMAGE PATH---")
                 image = Image.open(image_path)
                 contents.append(image)
+            else:
+                print(f"[INFO]---NO IMAGE PATH PROVIDED. GOING FORWARD WITH PROMPT ONLY---")
             
-            # Generate content
+            print(f"[INFO]---CALLING GEMINI CLIENT---")
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=contents
             )
             
             # Save the generated image
+            print(f"[INFO]---SAVING THE GENERATED IMAGE---")
             result_path = None
+            # print(f"[INFO]---RESPONSE RECIEVED FROM GEMINI CLIENT: {response}---")
             for part in response.candidates[0].content.parts:
                 if part.inline_data is not None:
                     # Generate a unique filename
@@ -55,8 +48,8 @@ class GeminiService:
                     # Save the image
                     image = Image.open(BytesIO(part.inline_data.data))
                     image.save(result_path)
+                    print(f"[INFO]---IMAGE SAVED SUCCESSFULLY AT: {result_path}---")
                     break
-            
             return result_path
         except Exception as e:
             print(f"Error generating image: {str(e)}")

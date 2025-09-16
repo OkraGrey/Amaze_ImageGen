@@ -13,10 +13,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # API Keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Gemini model configuration
 GEMINI_MODEL = "gemini-2.5-flash-image-preview"
-
+OPENAI_MODEL = "gpt-image-1"
 # Upload configuration
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
