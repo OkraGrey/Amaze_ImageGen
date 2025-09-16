@@ -1,0 +1,2 @@
+- We can use Nano-Banana for Text Editing. It works pretty well.
+- Need to design guard-rails to add quality check and feedback loop.
