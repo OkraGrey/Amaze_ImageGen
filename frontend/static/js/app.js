@@ -28,8 +28,8 @@ const applyChangesBtn = document.getElementById('applyChangesBtn');
 const cancelChangesBtn = document.getElementById('cancelChangesBtn');
 
 // API Endpoint
-const API_URL = '/api/upload';
-
+const UPLOAD_API_URL = '/api/upload';
+const DOWNLOAD_API_URL = '/api/download';
 /**
  * Initialize the application
  */
@@ -192,7 +192,7 @@ async function generateImage() {
         }
         
         // Send API request
-        const response = await fetch(API_URL, {
+        const response = await fetch(UPLOAD_API_URL, {
             method: 'POST',
             body: formData
         });
@@ -224,13 +224,73 @@ async function generateImage() {
 /**
  * Download generated image
  */
-function downloadImage() {
-    const link = document.createElement('a');
-    link.href = resultImage.src;
-    link.download = 'generated-image.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+async function downloadImage() {
+    console.log('[INFO]--- Starting download process ---');
+
+    try {
+        // Show loading state
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'Processing...';
+
+        // First, call the backend to process the image with background removal
+        console.log('[INFO]--- Calling backend for background removal ---');
+        const response = await fetch(DOWNLOAD_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ path: resultImage.src }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to process image');
+        }
+
+        const data = await response.json();
+        console.log('[INFO]--- Background removal complete, path:', data.path);
+
+        // Now fetch the processed image as a blob
+        console.log('[INFO]--- Fetching processed image as blob ---');
+        const imageResponse = await fetch(data.path);
+        if (!imageResponse.ok) {
+            throw new Error('Failed to fetch processed image');
+        }
+
+        const blob = await imageResponse.blob();
+        console.log('[INFO]--- Image blob received, size:', blob.size);
+
+        // Create a blob URL and trigger download
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
+        const filename = `image-no-bg-${timestamp}.png`;
+
+        // Create download link and trigger it
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the blob URL after a short delay
+        setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+            console.log('[INFO]--- Blob URL cleaned up ---');
+        }, 1000);
+
+        console.log('[INFO]--- Download triggered successfully ---');
+
+    } catch (error) {
+        console.error('[ERROR]--- Download failed:', error);
+        showError(error.message);
+    } finally {
+        // Restore button state
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download';
+    }
 }
 
 /**
@@ -366,7 +426,7 @@ async function applyChangesToImage() {
         formData.append('file', blob, 'current-image.png');
         
         // Send API request
-        const apiResponse = await fetch(API_URL, {
+        const apiResponse = await fetch(UPLOAD_API_URL, {
             method: 'POST',
             body: formData
         });

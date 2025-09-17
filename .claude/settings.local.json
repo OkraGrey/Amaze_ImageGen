@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir backend)",
+      "Bash(dir:*)",
+      "Bash(python test_photoroom_integration.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
