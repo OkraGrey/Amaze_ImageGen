@@ -51,7 +51,7 @@ async def upload_image(
         result_filename = None
         
         if service:
-            print(f"[INFO]---SERVICE FOUND IN THE FACTORY---")
+            print(f"[INFO]---SERVICE FOUND IN THE FACTORY---",flush=True)
             result_path = service.generate_image(prompt, file_path)
 
             print(f"[INFO]---RESULT PATH RECIEVED FROM SERVICE: {result_path}---")
@@ -110,6 +110,7 @@ async def download_image(request: DownloadRequest):
 
         # Remove background using OpenAI API
         processed_image_path_fs = remove_bg(image_path)
+        # processed_image_path_fs= image_path
 
         print(f"[INFO]--- Background removal completed. Processed image saved at: {processed_image_path_fs} ---")
 

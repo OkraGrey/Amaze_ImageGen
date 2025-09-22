@@ -30,6 +30,168 @@ const cancelChangesBtn = document.getElementById('cancelChangesBtn');
 // API Endpoint
 const UPLOAD_API_URL = '/api/upload';
 const DOWNLOAD_API_URL = '/api/download';
+
+// Image History Management
+const MAX_HISTORY_ITEMS = 20;
+let imageHistory = [];
+
+/**
+ * Initialize image history from localStorage
+ */
+function initializeHistory() {
+    const stored = localStorage.getItem('imageHistory');
+    if (stored) {
+        try {
+            imageHistory = JSON.parse(stored);
+            if (imageHistory.length > 0) {
+                showSidebar();
+                renderHistoryItems();
+            }
+        } catch (e) {
+            console.error('Failed to load history:', e);
+            imageHistory = [];
+        }
+    }
+}
+
+/**
+ * Add image to history
+ */
+function addToHistory(imagePath) {
+    const historyItem = {
+        id: Date.now(),
+        path: imagePath,
+        timestamp: new Date().toISOString(),
+        thumbnail: imagePath // In production, might want separate thumbnail
+    };
+
+    imageHistory.unshift(historyItem);
+
+    // Limit history size
+    if (imageHistory.length > MAX_HISTORY_ITEMS) {
+        imageHistory = imageHistory.slice(0, MAX_HISTORY_ITEMS);
+    }
+
+    localStorage.setItem('imageHistory', JSON.stringify(imageHistory));
+
+    // Show sidebar on first image
+    if (imageHistory.length === 1) {
+        showSidebar();
+    }
+
+    renderHistoryItems();
+}
+
+/**
+ * Show sidebar with animation
+ */
+function showSidebar() {
+    const sidebar = document.getElementById('imageHistorySidebar');
+    const mainWrapper = document.getElementById('mainContentWrapper');
+
+    if (sidebar && mainWrapper) {
+        sidebar.style.display = 'flex';
+        setTimeout(() => {
+            sidebar.classList.remove('hidden');
+            mainWrapper.classList.add('with-sidebar');
+        }, 10);
+    }
+}
+
+/**
+ * Hide sidebar
+ */
+function hideSidebar() {
+    const sidebar = document.getElementById('imageHistorySidebar');
+    const mainWrapper = document.getElementById('mainContentWrapper');
+
+    if (sidebar && mainWrapper) {
+        sidebar.classList.add('hidden');
+        mainWrapper.classList.remove('with-sidebar');
+        setTimeout(() => {
+            sidebar.style.display = 'none';
+        }, 300);
+    }
+}
+
+/**
+ * Render history items in sidebar
+ */
+function renderHistoryItems() {
+    const historyGrid = document.getElementById('historyGrid');
+    if (!historyGrid) return;
+
+    historyGrid.innerHTML = '';
+
+    imageHistory.forEach(item => {
+        const historyElement = document.createElement('div');
+        historyElement.className = 'history-item';
+        historyElement.dataset.imageId = item.id;
+
+        const img = document.createElement('img');
+        img.src = item.path;
+        img.alt = 'Generated image';
+        img.loading = 'lazy';
+
+        historyElement.appendChild(img);
+        historyElement.addEventListener('click', () => loadHistoryImage(item));
+
+        historyGrid.appendChild(historyElement);
+    });
+
+    // Mark current image as active
+    const currentPath = document.getElementById('resultImage')?.src;
+    if (currentPath) {
+        markActiveHistoryItem(currentPath);
+    }
+}
+
+/**
+ * Load image from history
+ */
+function loadHistoryImage(item) {
+    const resultImage = document.getElementById('resultImage');
+    if (resultImage) {
+        resultImage.src = item.path;
+
+        // Show result container
+        setGenerationState(false);
+        document.getElementById('resultContainer').hidden = false;
+
+        // Mark as active
+        markActiveHistoryItem(item.path);
+    }
+}
+
+/**
+ * Mark active history item
+ */
+function markActiveHistoryItem(imagePath) {
+    document.querySelectorAll('.history-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    const activeItem = Array.from(document.querySelectorAll('.history-item')).find(item => {
+        const img = item.querySelector('img');
+        return img && img.src === imagePath;
+    });
+
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+}
+
+/**
+ * Clear all history
+ */
+function clearHistory() {
+    if (confirm('Clear all image history?')) {
+        imageHistory = [];
+        localStorage.removeItem('imageHistory');
+        document.getElementById('historyGrid').innerHTML = '';
+        hideSidebar();
+    }
+}
 /**
  * Initialize the application
  */
@@ -50,7 +212,16 @@ function init() {
     modifyImageBtn.addEventListener('click', () => showConversationInput('modify'));
     applyChangesBtn.addEventListener('click', applyChangesToImage);
     cancelChangesBtn.addEventListener('click', hideConversationInput);
-    
+
+    // Initialize history
+    initializeHistory();
+
+    // Add clear history button listener
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearHistory);
+    }
+
     // Setup drag and drop on prompt area
     setupDragAndDrop();
 }
@@ -207,6 +378,7 @@ async function generateImage() {
         
         // Display result
         resultImage.src = data.result_path;
+        addToHistory(data.result_path); // Add to history
         resultContainer.hidden = false;
         
         // Scroll to result
@@ -441,6 +613,7 @@ async function applyChangesToImage() {
         
         // Display new result
         resultImage.src = data.result_path;
+        addToHistory(data.result_path); // Add to history
         resultContainer.hidden = false;
         
         // Scroll to result
